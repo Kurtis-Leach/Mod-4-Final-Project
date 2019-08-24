@@ -5,6 +5,7 @@ import luigi from '../Assets/luigi.gif'
 import Background from './Background'
 import Character from './Character';
 import { Link } from 'react-router-dom'
+import { io } from '../Socket'
 import Data from '../Assets/positionData.js'
 import { io } from '../Socket'
 
@@ -27,8 +28,7 @@ class Game extends React.Component{
         playerVelocityY: 0,
         windowLeft: 0,
         windowTop: 0,
-        mapWidth: 0,
-
+        mapWidth:0,
         opponentSpriteWidth: 100,
         opponentSpriteHeight: 100,
         opponentPlayerX: 150,
@@ -43,11 +43,14 @@ class Game extends React.Component{
 
         mapHeight: 0,
         calculations: true,
-        playerMapX: 0,
-        playerMapY: 0,
         playerHitWidth: 33,
         playerHitHeight: 70
 
+    }
+
+    opponentData = {
+        x: null,
+        y: null
     }
     
     gravity = 20
@@ -63,6 +66,7 @@ class Game extends React.Component{
     }
 
     jumpCalc = () =>{
+
         let currY
         let currYVel
         let currMapX
@@ -92,7 +96,6 @@ class Game extends React.Component{
         if (this.state.playerY < 0.15*this.state.mapHeight){//max height
             currYVel = 0
         }
-
         return({playerY: currY, playerVelocityY: currYVel, playerMapX: currMapX})
     }
 
@@ -118,21 +121,22 @@ class Game extends React.Component{
         let displayLeft = this.state.windowLeft
         let currMapX = this.state.playerMapX
         if(this.state.windowLeft > this.state.mapWidth * 0.825){
+           
             displayLeft = this.state.windowLeft - (this.state.mapWidth * -0.0009)
             currMapX = this.state.playerMapX - (this.state.mapWidth * 0.0009)
             if(displayLeft < this.state.mapWidth * 0.825){
                 displayLeft = this.state.mapWidth * 0.825
             }
         } else {
+            // console.log(this.state.windowLeft,  this.state.mapWidth)
             this.win()
         }
         return ({displayLeft: displayLeft, playerMapX: currMapX})
     }
 
     collisionDetecter = () => {
-        // let answer
-        // let j
         for(let i in Data){
+            
             const objectLeftSide = Data[i].coordX
             const objectRightSide = Data[i].coordX + Data[i].width
             const objectTop = Data[i].coordY
@@ -144,7 +148,7 @@ class Game extends React.Component{
             const playerBottom = this.state.playerY + this.state.playerHitHeight
 
             const xVelocity = this.state.mapWidth * -0.0009
-            const yVelocity = Math.abs(this.playerVelocityY)
+            const yVelocity = Math.abs(this.state.playerVelocityY)
 
             const xAligned = (
                 (objectLeftSide < playerLeftSide && playerLeftSide < objectRightSide && playerRightSide > objectRightSide)
@@ -168,6 +172,13 @@ class Game extends React.Component{
 
             const colliding =  xAligned && yAligned
 
+            const theGround = 0.543*this.state.mapHeight 
+
+            const falling = (
+                yVelocity == 0 
+                    &&
+                playerTop != theGround
+            )
 
         io.emit('playerMovement', {
             x: this.state.playerX,
@@ -177,12 +188,12 @@ class Game extends React.Component{
 
         this.setState({windowLeft: displayLeft, playerY: numbers.playerY, playerVelocityY: numbers.playerVelocityY,
             opponentPlayerX: this.opponentData.x, opponentPlayerY: this.opponentData.y})
+
             
             let collidingTop = (
                 colliding 
                     &&
-                // yVelocity > xVelocity
-                (objectTop < playerBottom && playerBottom < objectBottom && playerTop < objectTop)
+                falling
             )
             
             const collidingSide = (
@@ -191,11 +202,6 @@ class Game extends React.Component{
                 xVelocity > yVelocity
             )
 
-            // if(collidingSide){
-            //     collidingTop = false
-            // }
-
-            if(colliding) console.log(xVelocity, yVelocity)
             if(colliding){
                 if(collidingTop){
                         console.log("COLLIDING TOP")
@@ -232,7 +238,14 @@ class Game extends React.Component{
     gameLoop = () => {
         let displayLeft = this.collisionDetecter() ? this.mapMovement() : {displayLeft: this.state.windowLeft, playerMapX: this.state.playerMapX } 
         let numbers = this.state.calculations ? this.jumpCalc() : {playerY: this.state.playerY, playerVelocityY: this.state.playerVelocityY}
-        this.setState({windowLeft: displayLeft.displayLeft, playerY: numbers.playerY, playerVelocityY: numbers.playerVelocityY, playerMapX: displayLeft.playerMapX})
+        io.emit('playerMovement', {
+            x: displayLeft.playerMapX,
+            y: numbers.playerY,
+            queue: this.props.match.params.queue
+        })
+
+        this.setState({windowLeft: displayLeft.displayLeft, playerY: numbers.playerY, playerVelocityY: numbers.playerVelocityY, playerMapX: displayLeft.playerMapX,
+            opponentPlayerX: this.opponentData.x, opponentPlayerY: this.opponentData.y})
     }
 
     updateWindowDimensions = () => {
@@ -309,21 +322,21 @@ class Game extends React.Component{
     }
 
     componentDidMount = () => {
-        // console.log(this.props.match.params.queue)
-
-        console.log(Data)
         // window.addEventListener('click', (e)=>{this.randomUtility(e)})
         window.addEventListener('keydown', (e)=>{this.jump(e)}) 
         this.halfWidth = this.state.spriteWidth / 2;
         this.halfHeight = this.state.spriteHeight / 2
         this.updateWindowDimensions()
         window.addEventListener('resize', this.updateWindowDimensions)
-        this.gameInterval = setInterval(this.gameLoop, 1000/FRAMES_PER_SECOND)
+       
         let mapImg = document.querySelector(".mapImg")
         mapImg.onload = () => {
             let mapHeight= mapImg.getBoundingClientRect().height
             let mapWidth = mapImg.getBoundingClientRect().width
-            this.setState({mapWidth: mapWidth*-1, mapHeight: mapHeight, playerX: 0.10416666666666667*window.innerWidth, playerY: mapHeight * 0.543, playerMapX: mapWidth * 0.01815141702118653})
+            this.setState({mapWidth: mapWidth*-1, mapHeight: mapHeight, playerX: 0.10416666666666667*window.innerWidth, playerY: mapHeight * 0.543, playerMapX: mapWidth * 0.01815141702118653}, 
+                () => {
+                    this.gameInterval = setInterval(this.gameLoop, 1000/FRAMES_PER_SECOND)
+                })
             
         }
 
@@ -333,9 +346,6 @@ class Game extends React.Component{
                 x: data.x,
                 y: data.y
             }
-            console.log("OP: ", this.opponentData)
-        })
-
     }
 
     componentWillUnmount = () => {//useful if have a button to main menu after race
