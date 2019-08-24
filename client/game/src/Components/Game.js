@@ -5,8 +5,7 @@ import Background from './Background'
 import Character from './Character';
 import { Link } from 'react-router-dom'
 import Data from '../Assets/positionData.js'
-
-
+import { io } from '../Socket'
 
 const FRAMES_PER_SECOND = 60
 
