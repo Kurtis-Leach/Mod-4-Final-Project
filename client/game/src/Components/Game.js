@@ -7,7 +7,7 @@ import Character from './Character';
 import { Link } from 'react-router-dom'
 import { io } from '../Socket'
 import Data from '../Assets/positionData.js'
-
+import { io } from '../Socket'
 
 
 const FRAMES_PER_SECOND = 60
@@ -34,10 +34,18 @@ class Game extends React.Component{
         opponentPlayerX: 150,
         opponentPlayerY: 840,
         opponentPlayerVelocityY: 0,
-        opponenetSpeedX: 0,
+        opponenetSpeedX: 0
+    }
+
+    opponentData = {
+        x: null,
+        y: null
+
+        mapHeight: 0,
         calculations: true,
         playerHitWidth: 33,
         playerHitHeight: 70
+
     }
 
     opponentData = {
@@ -66,8 +74,10 @@ class Game extends React.Component{
         currYVel = this.playerVelocityY
         currMapX = this.state.playerMapX
         if (this.state.playerVelocityY > 0){
-            currY = this.state.playerY - this.playerVelocityY
-            currYVel = this.playerVelocityY - this.state.gravity
+            currY = this.state.playerY - this.state.playerVelocityY
+            currYVel = this.state.playerVelocityY - this.state.gravity
+            // console.log({playerY: currY, playerVelocityY: currYVel})
+
         }
         if (this.state.playerY < 0.543*this.state.mapHeight && this.state.playerVelocityY <= 0){//gravity
             if (this.gravity === 0){
@@ -169,6 +179,16 @@ class Game extends React.Component{
                     &&
                 playerTop != theGround
             )
+
+        io.emit('playerMovement', {
+            x: this.state.playerX,
+            y: numbers.playerY,
+            queue: this.props.match.params.queue
+        })
+
+        this.setState({windowLeft: displayLeft, playerY: numbers.playerY, playerVelocityY: numbers.playerVelocityY,
+            opponentPlayerX: this.opponentData.x, opponentPlayerY: this.opponentData.y})
+
             
             let collidingTop = (
                 colliding 
@@ -302,8 +322,6 @@ class Game extends React.Component{
     }
 
     componentDidMount = () => {
-        // console.log(this.props.match.params.queue)
-        // console.log(Data)
         // window.addEventListener('click', (e)=>{this.randomUtility(e)})
         window.addEventListener('keydown', (e)=>{this.jump(e)}) 
         this.halfWidth = this.state.spriteWidth / 2;
@@ -321,14 +339,13 @@ class Game extends React.Component{
                 })
             
         }
+
         window.addEventListener('keydown', (e)=>{this.jump(e)})
         io.on('updateOpponent', data => {
             this.opponentData = {
                 x: data.x,
                 y: data.y
             }
-            // console.log("OP: ", this.opponentData)
-        })
     }
 
     componentWillUnmount = () => {//useful if have a button to main menu after race

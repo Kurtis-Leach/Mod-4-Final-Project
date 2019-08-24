@@ -16,6 +16,7 @@ class Character extends Component {
         }
        
         return ( 
+
             <div>
                    <img className="character" style={style} src={this.props.charImg} alt=" " />      
             </div>
