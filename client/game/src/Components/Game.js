@@ -1,6 +1,7 @@
 import React from 'react'
 import map from '../Assets/map.png'
 import mario from '../Assets/mario-running-gif-1.gif'
+import luigi from '../Assets/luigi.gif'
 import Background from './Background'
 import Character from './Character';
 import { Link } from 'react-router-dom'
@@ -27,12 +28,26 @@ class Game extends React.Component{
         windowLeft: 0,
         windowTop: 0,
         mapWidth: 0,
+
+        opponentSpriteWidth: 100,
+        opponentSpriteHeight: 100,
+        opponentPlayerX: 150,
+        opponentPlayerY: 840,
+        opponentPlayerVelocityY: 0,
+        opponenetSpeedX: 0
+    }
+
+    opponentData = {
+        x: null,
+        y: null
+
         mapHeight: 0,
         calculations: true,
         playerMapX: 0,
         playerMapY: 0,
         playerHitWidth: 33,
         playerHitHeight: 70
+
     }
     
     gravity = 20
@@ -55,8 +70,10 @@ class Game extends React.Component{
         currYVel = this.playerVelocityY
         currMapX = this.state.playerMapX
         if (this.state.playerVelocityY > 0){
-            currY = this.state.playerY - this.playerVelocityY
-            currYVel = this.playerVelocityY - this.state.gravity
+            currY = this.state.playerY - this.state.playerVelocityY
+            currYVel = this.state.playerVelocityY - this.state.gravity
+            // console.log({playerY: currY, playerVelocityY: currYVel})
+
         }
         if (this.state.playerY < 0.543*this.state.mapHeight && this.state.playerVelocityY <= 0){//gravity
             if (this.gravity === 0){
@@ -151,6 +168,15 @@ class Game extends React.Component{
 
             const colliding =  xAligned && yAligned
 
+
+        io.emit('playerMovement', {
+            x: this.state.playerX,
+            y: numbers.playerY,
+            queue: this.props.match.params.queue
+        })
+
+        this.setState({windowLeft: displayLeft, playerY: numbers.playerY, playerVelocityY: numbers.playerVelocityY,
+            opponentPlayerX: this.opponentData.x, opponentPlayerY: this.opponentData.y})
             
             let collidingTop = (
                 colliding 
@@ -283,6 +309,8 @@ class Game extends React.Component{
     }
 
     componentDidMount = () => {
+        // console.log(this.props.match.params.queue)
+
         console.log(Data)
         // window.addEventListener('click', (e)=>{this.randomUtility(e)})
         window.addEventListener('keydown', (e)=>{this.jump(e)}) 
@@ -298,6 +326,16 @@ class Game extends React.Component{
             this.setState({mapWidth: mapWidth*-1, mapHeight: mapHeight, playerX: 0.10416666666666667*window.innerWidth, playerY: mapHeight * 0.543, playerMapX: mapWidth * 0.01815141702118653})
             
         }
+
+        window.addEventListener('keydown', (e)=>{this.jump(e)})
+        io.on('updateOpponent', data => {
+            this.opponentData = {
+                x: data.x,
+                y: data.y
+            }
+            console.log("OP: ", this.opponentData)
+        })
+
     }
 
     componentWillUnmount = () => {//useful if have a button to main menu after race
@@ -311,6 +349,7 @@ class Game extends React.Component{
         return(
             <div>
                 <Character charImg={mario} centreX={this.state.playerX} centreY={this.state.playerY} width={this.state.spriteWidth} height={this.state.spriteHeight}/>
+                <Character charImg={luigi} centreX={this.state.opponentPlayerX} centreY={this.state.opponentPlayerY} width={this.state.opponentSpriteWidth} height={this.state.opponentSpriteHeight}/>
                 <Background map={map} windowWidth={this.state.windowWidth} windowHeight={this.state.windowHeight} windowLeft={this.state.windowLeft}/>
             </div> 
         )
